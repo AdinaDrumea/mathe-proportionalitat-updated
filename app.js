@@ -9,11 +9,7 @@ $("soundBtn").onclick=()=>{soundOn=!soundOn;$("soundBtn").textContent=soundOn?"�
 function hideAll(){["home","intro","quiz","results"].forEach(id=>$(id).classList.add("hidden"))}
 function showHome(){hideAll();$("home").classList.remove("hidden")}
 $("introHome").onclick=showHome;$("quizHome").onclick=showHome;$("resultsHome").onclick=showHome;
-
-function buildHome(){
- const g=$("testGrid");g.innerHTML="";
- TESTS.forEach((t,i)=>{const b=document.createElement("button");b.className="testcard";b.innerHTML=`<span class="badge">${t.level}</span><b>${t.title}</b><span>${t.intro}</span>`;b.onclick=()=>openIntro(i);g.appendChild(b)})
-}
+function buildHome(){const g=$("testGrid");g.innerHTML="";TESTS.forEach((t,i)=>{const b=document.createElement("button");b.className="testcard";b.innerHTML=`<span class="badge">${t.level}</span><b>${t.title}</b><span>${t.intro}</span>`;b.onclick=()=>openIntro(i);g.appendChild(b)})}
 function openIntro(i){testIndex=i;hideAll();$("intro").classList.remove("hidden");$("introTitle").textContent=TESTS[i].title;$("introLevel").textContent=TESTS[i].level;$("introText").textContent=TESTS[i].intro}
 $("startBtn").onclick=()=>startTest();
 
@@ -27,102 +23,135 @@ const close=(a,b)=>Number.isFinite(a)&&Math.abs(a-b)<=Math.max(.001,Math.abs(b)*
 
 function render(){
  q=items[idx];firstTry=true;$("qTitle").textContent=TESTS[testIndex].title;$("counter").textContent=`Aufgabe ${idx+1} von ${items.length}`;$("bar").style.width=`${(idx/items.length)*100}%`;
- $("context").classList.add("hidden");$("tableArea").classList.add("hidden");$("question").textContent="";$("answerArea").innerHTML="";$("feedback").className="feedback hidden";$("feedback").innerHTML="";$("nextBtn").classList.add("hidden");
+ $("context").classList.add("hidden");$("question").textContent="";$("answerArea").innerHTML="";$("feedback").className="feedback hidden";$("feedback").innerHTML="";$("nextBtn").classList.add("hidden");
  if(q.context){$("context").textContent=q.context;$("context").classList.remove("hidden")}
  ({relation:renderRelation,direct_given:renderDirectGiven,direct_factor:renderDirectFactor,direct_shown:renderDirectShown,direct_help:renderDirectHelp,inverse_guided:renderInverseGuided,inverse_table:renderInverseTable,table_steps:renderTableSteps,steps:renderSteps})[q.type]()
 }
-
-function renderTable(headers,rows){
- let h="<table class='values'><thead><tr>"+headers.map(x=>`<th>${x}</th>`).join("")+"</tr></thead><tbody>";
- rows.forEach(r=>h+="<tr>"+r.map(x=>`<td>${x}</td>`).join("")+"</tr>");
- h+="</tbody></table>";$("tableArea").innerHTML=h;$("tableArea").classList.remove("hidden")
-}
-function addHelp(box,text){
- const b=document.createElement("button");b.className="btn ghost";b.textContent="Hilfe";
- const h=document.createElement("div");h.className="helper hidden";h.textContent=text;
- b.onclick=()=>h.classList.toggle("hidden");box.appendChild(b);box.appendChild(h)
+function addHelp(box,text){if(!text)return;const b=document.createElement("button");b.className="btn ghost";b.textContent="Hilfe";const h=document.createElement("div");h.className="helper hidden";h.textContent=text;b.onclick=()=>h.classList.toggle("hidden");box.appendChild(b);box.appendChild(h)}
+function inputHTML(key,unit="",disabled=false){return `<input class="cellinput" data-key="${key}" inputmode="decimal" ${disabled?"disabled":""}> <span class="unit">${unit||""}</span>`}
+function checkHTML(key,label="Prüfen",disabled=false){return `<button class="smallcheck" data-check="${key}" ${disabled?"disabled":""}>${label}</button>`}
+function wireCell(box,key,answer,onCorrect,msg){
+ const inp=box.querySelector(`[data-key="${key}"]`),btn=box.querySelector(`[data-check="${key}"]`);
+ btn.onclick=()=>{if(close(parseNum(inp.value),answer)){inp.classList.remove("cellbad");inp.classList.add("cellgood");inp.disabled=true;btn.disabled=true;good();success(msg||"Richtig.");onCorrect&&onCorrect()}else{inp.classList.add("cellbad");retry("Noch nicht. Korrigiere dieses Tabellenfeld und prüfe erneut.")}};
+ inp.addEventListener("input",()=>inp.classList.remove("cellbad"));
 }
 
 function renderRelation(){
- renderTable(q.headers,q.rows);$("question").textContent="Welche Beziehung liegt vor?";
- const opts=[["prop","proportional","Mehr von der einen Grösse → mehr von der anderen. Weniger → weniger."],["inv","umgekehrt proportional","Eine Gesamtmenge / Gesamtarbeit bleibt gleich. Mehr Einheiten → weniger pro Einheit."],["none","weder noch","Kein fester proportionaler Zusammenhang."]];
- const w=document.createElement("div");w.className="options";
- opts.forEach(([v,l,s])=>{const b=document.createElement("button");b.className="option";b.innerHTML=`<b>${l}</b><br><span class="sub">${s}</span>`;b.onclick=()=>{if(v===q.answer){[...w.children].forEach(x=>x.disabled=true);b.classList.add("correct");success(`<b>Richtig.</b> ${q.explanation}`);finishQuestion()}else{b.classList.add("wrong");retry("Noch nicht. Überlege noch einmal, was mit der zweiten Grösse passiert.");setTimeout(()=>b.classList.remove("wrong"),450)}};w.appendChild(b)});
- $("answerArea").appendChild(w)
+ $("question").textContent="Welche Beziehung liegt vor?";
+ let h=`<div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th></tr></thead><tbody>`;
+ q.rows.forEach(r=>h+=`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`);h+="</tbody></table></div>";
+ $("answerArea").innerHTML=h;
+ const opts=document.createElement("div");opts.className="options";
+ [["prop","proportional","Mehr von der einen Grösse → mehr von der anderen. Weniger → weniger."],["inv","umgekehrt proportional","Eine Gesamtmenge / Gesamtarbeit bleibt gleich."],["none","weder noch","Kein fester proportionaler Zusammenhang."]].forEach(([v,l,s])=>{const b=document.createElement("button");b.className="option";b.innerHTML=`<b>${l}</b><br><span class="sub">${s}</span>`;b.onclick=()=>{if(v===q.answer){[...opts.children].forEach(x=>x.disabled=true);b.classList.add("correct");success(`<b>Richtig.</b> ${q.explanation}`);finishQuestion()}else{b.classList.add("wrong");retry("Noch nicht. Überlege noch einmal.");setTimeout(()=>b.classList.remove("wrong"),450)}};opts.appendChild(b)});
+ $("answerArea").appendChild(opts)
 }
+
 function renderDirectGiven(){
- renderTable(q.headers,q.rows);$("question").textContent="Auf der anderen Seite machst du dasselbe.";
- const box=document.createElement("div");box.className="panel";box.innerHTML=`<div class="guide"><b>${q.factor}</b></div><div class="row"><b>${q.calc} =</b><input class="num main" inputmode="decimal"><span>${q.unit}</span><button class="btn primary check">Prüfen</button></div>`;$("answerArea").appendChild(box);
- box.querySelector(".check").onclick=()=>{if(close(parseNum(box.querySelector(".main").value),q.answer)){box.querySelector(".main").disabled=true;box.querySelector(".check").disabled=true;success("Richtig.");finishQuestion()}else retry()}
+ $("question").textContent="Der Faktor ist gegeben. Trage den fehlenden Wert direkt in die Tabelle ein.";
+ const key="target";
+ const r1=q.rows[0],r2=q.rows[1];
+ $("answerArea").innerHTML=`<div class="guide"><b>${q.factor}</b> — auf der anderen Seite machst du dasselbe.</div>
+ <div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th class="control">Kontrolle</th></tr></thead><tbody>
+ <tr><td>${r1[0]}</td><td>${r1[1]}</td><td>gegeben</td></tr>
+ <tr><td>${r2[0]}</td><td>${inputHTML(key,q.unit)}</td><td>${checkHTML(key)}</td></tr>
+ </tbody></table></div>`;
+ const box=$("answerArea");wireCell(box,key,q.answer,()=>finishQuestion(),`Richtig. ${q.calc} = ${q.answer} ${q.unit}.`)
 }
+
 function renderDirectFactor(){
- renderTable(q.headers,q.rows);$("question").textContent="Schritt 1: Welcher Faktor führt von der ersten zur zweiten Grösse?";
- const area=$("answerArea"),ops=document.createElement("div");ops.className="options";
- q.options.forEach(v=>{const b=document.createElement("button");b.className="option";b.textContent=v;b.onclick=()=>{if(v===q.factor){[...ops.children].forEach(x=>x.disabled=true);b.classList.add("correct");good();step2.classList.remove("hidden")}else{b.classList.add("wrong");retry("Noch nicht. Vergleiche die beiden Werte der ersten Grösse.");setTimeout(()=>b.classList.remove("wrong"),450)}};ops.appendChild(b)});area.appendChild(ops);
- const step2=document.createElement("div");step2.className="panel hidden";step2.innerHTML=`<div class="guide">Schritt 2: Proportional bedeutet: Auf der anderen Seite machst du dasselbe.</div><div class="row"><b>${q.calc} =</b><input class="num main" inputmode="decimal"><span>${q.unit}</span><button class="btn primary check">Prüfen</button></div>`;area.appendChild(step2);
- step2.querySelector(".check").onclick=()=>{if(close(parseNum(step2.querySelector(".main").value),q.answer)){step2.querySelector(".main").disabled=true;step2.querySelector(".check").disabled=true;success("Richtig.");finishQuestion()}else retry()}
+ $("question").textContent="Finde zuerst den Faktor. Danach trägst du den fehlenden Wert direkt in die Tabelle ein.";
+ const ops=document.createElement("div");ops.className="options";
+ q.options.forEach(v=>{const b=document.createElement("button");b.className="option";b.textContent=v;b.onclick=()=>{if(v===q.factor){[...ops.children].forEach(x=>x.disabled=true);b.classList.add("correct");good();tableBox.classList.remove("hidden")}else{b.classList.add("wrong");retry("Noch nicht. Vergleiche die beiden Werte der ersten Grösse.");setTimeout(()=>b.classList.remove("wrong"),450)}};ops.appendChild(b)});
+ $("answerArea").appendChild(ops);
+ const r1=q.rows[0],r2=q.rows[1],tableBox=document.createElement("div");tableBox.className="tablewrap hidden";tableBox.innerHTML=`<table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${r1[0]}</td><td>${r1[1]}</td><td>gegeben</td></tr>
+ <tr><td>${r2[0]}</td><td>${inputHTML("target",q.unit)}</td><td>${checkHTML("target")}</td></tr></tbody></table>`;
+ $("answerArea").appendChild(tableBox);wireCell(tableBox,"target",q.answer,()=>finishQuestion(),`Richtig. ${q.calc} = ${q.answer} ${q.unit}.`)
 }
+
 function renderDirectShown(){
- renderTable(q.headers,[q.known,[q.inter.label,"?"],[q.target.label,"?"]]);$("question").textContent="Berechne zuerst den gezeigten Zwischenwert und danach den Zielwert.";
- const box=document.createElement("div");box.className="panel";box.innerHTML=`<div class="step"><h4>Zwischenwert</h4><div class="row"><b>${q.inter.label}</b><input class="num inter" inputmode="decimal"><span>${q.inter.unit}</span><button class="btn softbtn checkInter">Prüfen</button></div></div><div class="step targetStep hidden"><h4>Zielwert</h4><div class="row"><b>${q.target.label}</b><input class="num target" inputmode="decimal"><span>${q.target.unit}</span><button class="btn primary checkTarget">Prüfen</button></div></div>`;$("answerArea").appendChild(box);addHelp(box,q.help);
- box.querySelector(".checkInter").onclick=()=>{if(close(parseNum(box.querySelector(".inter").value),q.inter.answer)){box.querySelector(".inter").disabled=true;box.querySelector(".checkInter").disabled=true;box.querySelector(".targetStep").classList.remove("hidden");success("Zwischenwert stimmt. Jetzt weiter zum Zielwert.")}else retry("Noch nicht. Korrigiere den Zwischenwert und prüfe erneut.")};
- box.querySelector(".checkTarget").onclick=()=>{if(close(parseNum(box.querySelector(".target").value),q.target.answer)){box.querySelector(".target").disabled=true;box.querySelector(".checkTarget").disabled=true;success("Richtig.");finishQuestion()}else retry()}
+ $("question").textContent="Berechne den Zwischenwert und danach den Zielwert direkt in der Tabelle.";
+ const box=document.createElement("div");box.innerHTML=`<div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${q.known[0]}</td><td>${q.known[1]}</td><td>gegeben</td></tr>
+ <tr><td>${q.inter.label}</td><td>${inputHTML("inter",q.inter.unit)}</td><td>${checkHTML("inter")}</td></tr>
+ <tr><td>${q.target.label}</td><td>${inputHTML("target",q.target.unit,true)}</td><td>${checkHTML("target","Prüfen",true)}</td></tr>
+ </tbody></table></div>`;$("answerArea").appendChild(box);addHelp(box,q.help);
+ wireCell(box,"inter",q.inter.answer,()=>{box.querySelector('[data-key="target"]').disabled=false;box.querySelector('[data-check="target"]').disabled=false}, "Zwischenwert stimmt. Jetzt den Zielwert eintragen.");
+ wireCell(box,"target",q.target.answer,()=>finishQuestion(),"Richtig.")
 }
+
 function renderDirectHelp(){
- renderTable(q.headers,[q.known,q.targetRow]);$("question").textContent="Berechne den gesuchten Wert. Wenn du Hilfe brauchst, kannst du dir einen hilfreichen Zwischenwert anzeigen lassen.";
- const box=document.createElement("div");box.className="panel";box.innerHTML=`<div class="row"><b>Zielwert</b><input class="num target" inputmode="decimal"><span>${q.unit}</span><button class="btn primary checkTarget">Prüfen</button></div>`;$("answerArea").appendChild(box);
+ $("question").textContent="Trage den gesuchten Wert direkt in die Tabelle ein. Hilfe zeigt bei Bedarf einen Zwischenwert.";
+ const box=document.createElement("div");
+ box.innerHTML=`<div class="tablewrap"><table class="values helpTable"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${q.known[0]}</td><td>${q.known[1]}</td><td>gegeben</td></tr>
+ <tr class="interRow hidden"><td>Hilfswert: ${q.interLabel}</td><td>${inputHTML("inter",q.interUnit)}</td><td>${checkHTML("inter")}</td></tr>
+ <tr><td>${q.targetRow[0]}</td><td>${inputHTML("target",q.unit)}</td><td>${checkHTML("target")}</td></tr>
+ </tbody></table></div>`;
+ $("answerArea").appendChild(box);
  const hb=document.createElement("button");hb.className="btn ghost";hb.textContent="Hilfe: Zwischenwert zeigen";
- const helper=document.createElement("div");helper.className="helper hidden";helper.innerHTML=`<b>Hilfreicher Zwischenwert: ${q.interLabel}</b><div class="row"><input class="num inter" inputmode="decimal"><span>${q.interUnit}</span><button class="btn softbtn checkInter">Prüfen</button></div><div class="sub">${q.help}</div>`;box.appendChild(hb);box.appendChild(helper);hb.onclick=()=>helper.classList.toggle("hidden");
- helper.querySelector(".checkInter").onclick=()=>{if(close(parseNum(helper.querySelector(".inter").value),q.interAnswer)){helper.querySelector(".inter").disabled=true;helper.querySelector(".checkInter").disabled=true;success("Der Zwischenwert stimmt.")}else retry("Noch nicht. Korrigiere den Zwischenwert.")};
- box.querySelector(".checkTarget").onclick=()=>{if(close(parseNum(box.querySelector(".target").value),q.answer)){box.querySelector(".target").disabled=true;box.querySelector(".checkTarget").disabled=true;success("Richtig.");finishQuestion()}else retry()}
+ const ht=document.createElement("div");ht.className="helper hidden";ht.textContent=q.help||"";
+ hb.onclick=()=>{box.querySelector(".interRow").classList.remove("hidden");ht.classList.remove("hidden")};box.appendChild(hb);box.appendChild(ht);
+ wireCell(box,"inter",q.interAnswer,null,"Zwischenwert stimmt.");
+ wireCell(box,"target",q.answer,()=>finishQuestion(),"Richtig.")
 }
+
 function renderInverseGuided(){
- renderTable(q.headers,[q.known,[q.oneLabel,"?"],[q.targetLabel,"?"]]);$("question").textContent="Umgekehrt proportional: Gesamtwert berechnen → 1 Einheit → durch die neue Anzahl teilen.";
- const box=document.createElement("div");box.className="panel";box.innerHTML=`<div class="step"><h4>Schritt 1: Gesamtwert</h4><div class="row"><b>${q.totalLabel}</b><input class="num total" inputmode="decimal"><span>${q.totalUnit}</span><button class="btn softbtn checkTotal">Prüfen</button></div></div><div class="step oneStep hidden"><h4>Schritt 2: 1 Einheit</h4><div class="row"><b>${q.oneLabel}</b><input class="num one" inputmode="decimal"><span>${q.oneUnit}</span><button class="btn softbtn checkOne">Prüfen</button></div></div><div class="step targetStep hidden"><h4>Schritt 3: Neue Anzahl</h4><div class="row"><b>${q.targetLabel}</b><input class="num target" inputmode="decimal"><span>${q.targetUnit}</span><button class="btn primary checkTarget">Prüfen</button></div></div>`;$("answerArea").appendChild(box);addHelp(box,q.help);
- box.querySelector(".checkTotal").onclick=()=>{if(close(parseNum(box.querySelector(".total").value),q.totalAnswer)){box.querySelector(".total").disabled=true;box.querySelector(".checkTotal").disabled=true;box.querySelector(".oneStep").classList.remove("hidden");success("Gesamtwert stimmt.")}else retry("Noch nicht. Berechne den Gesamtwert noch einmal.")};
- box.querySelector(".checkOne").onclick=()=>{if(close(parseNum(box.querySelector(".one").value),q.oneAnswer)){box.querySelector(".one").disabled=true;box.querySelector(".checkOne").disabled=true;box.querySelector(".targetStep").classList.remove("hidden");success("1 Einheit stimmt. Jetzt durch die neue Anzahl teilen.")}else retry("Noch nicht. Bei 1 Einheit liegt der ganze Gesamtwert in dieser einen Einheit.")};
- box.querySelector(".checkTarget").onclick=()=>{if(close(parseNum(box.querySelector(".target").value),q.targetAnswer)){box.querySelector(".target").disabled=true;box.querySelector(".checkTarget").disabled=true;success("Richtig.");finishQuestion()}else retry()}
+ $("question").textContent="Umgekehrt proportional: Gesamtwert → 1 Einheit → Ziel. Alle Werte werden in Tabellen eingetragen.";
+ const box=document.createElement("div");
+ box.innerHTML=`<div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${q.known[0]}</td><td>${q.known[1]}</td><td>gegeben</td></tr>
+ <tr><td>${q.oneLabel}</td><td>${inputHTML("one",q.oneUnit,true)}</td><td>${checkHTML("one","Prüfen",true)}</td></tr>
+ <tr><td>${q.targetLabel}</td><td>${inputHTML("target",q.targetUnit,true)}</td><td>${checkHTML("target","Prüfen",true)}</td></tr>
+ </tbody></table></div>
+ <div class="tablewrap"><table class="values"><thead><tr><th>Zwischenschritt</th><th>Wert</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${q.totalLabel}</td><td>${inputHTML("total",q.totalUnit)}</td><td>${checkHTML("total")}</td></tr>
+ </tbody></table></div>`;
+ $("answerArea").appendChild(box);addHelp(box,q.help);
+ wireCell(box,"total",q.totalAnswer,()=>{box.querySelector('[data-key="one"]').disabled=false;box.querySelector('[data-check="one"]').disabled=false},"Gesamtwert stimmt. Jetzt 1 Einheit eintragen.");
+ wireCell(box,"one",q.oneAnswer,()=>{box.querySelector('[data-key="target"]').disabled=false;box.querySelector('[data-check="target"]').disabled=false},"1 Einheit stimmt. Jetzt den Zielwert eintragen.");
+ wireCell(box,"target",q.targetAnswer,()=>finishQuestion(),"Richtig.")
 }
-function makeEditableTable(headers,known,inputRows){
- let h=`<table class="values"><thead><tr><th>${headers[0]}</th><th>${headers[1]}</th><th>Kontrolle</th></tr></thead><tbody><tr><td>${known[0]}</td><td>${known[1]}</td><td>gegeben</td></tr>`;
- inputRows.forEach((r,i)=>{h+=`<tr><td>${r.left}</td><td><input class="cellinput" data-i="${i}" inputmode="decimal"> <span>${r.unit||""}</span></td><td><button class="smallcheck" data-check="${i}">Prüfen</button></td></tr>`});return h+"</tbody></table>"
-}
-function wireRows(box,inputRows,onDone){
- inputRows.forEach((r,i)=>{const inp=box.querySelector(`[data-i="${i}"]`),btn=box.querySelector(`[data-check="${i}"]`);btn.onclick=()=>{if(close(parseNum(inp.value),r.answer)){inp.classList.remove("cellbad");inp.classList.add("cellgood");inp.disabled=true;btn.disabled=true;good();$("feedback").className="feedback good";$("feedback").textContent=`${r.left}: richtig.`}else{inp.classList.add("cellbad");retry(`${r.left}: Noch nicht. Korrigiere dieses Tabellenfeld.`)}if([...box.querySelectorAll(".cellinput")].every(x=>x.disabled))onDone()};inp.addEventListener("input",()=>inp.classList.remove("cellbad"))})
-}
+
 function renderInverseTable(){
- $("question").textContent="Berechne zuerst den Gesamtwert. Danach füllst du die Tabelle direkt aus.";
- const box=document.createElement("div");box.className="panel";box.innerHTML=`<div class="step"><h4>Gesamtwert</h4><div class="row"><input class="num total" inputmode="decimal"><span>${q.totalUnit}</span><button class="btn softbtn checkTotal">Prüfen</button></div></div><div class="tableHolder hidden">${makeEditableTable(q.headers,q.known,q.inputRows)}</div>`;$("answerArea").appendChild(box);addHelp(box,q.help);
- box.querySelector(".checkTotal").onclick=()=>{if(close(parseNum(box.querySelector(".total").value),q.totalAnswer)){box.querySelector(".total").disabled=true;box.querySelector(".checkTotal").disabled=true;box.querySelector(".tableHolder").classList.remove("hidden");success("Gesamtwert stimmt. Jetzt die Tabelle ausfüllen.")}else retry("Noch nicht. Berechne den Gesamtwert noch einmal.")};
- wireRows(box,q.inputRows,()=>{success("Alles richtig.");finishQuestion()})
+ $("question").textContent="Berechne zuerst den Gesamtwert. Danach füllst du die fehlenden Tabellenwerte direkt in der Tabelle aus.";
+ const box=document.createElement("div");
+ let rows=q.inputRows.map((r,i)=>`<tr><td>${r.left}</td><td>${inputHTML("r"+i,r.unit,true)}</td><td>${checkHTML("r"+i,"Prüfen",true)}</td></tr>`).join("");
+ box.innerHTML=`<div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>${q.known[0]}</td><td>${q.known[1]}</td><td>gegeben</td></tr>${rows}</tbody></table></div>
+ <div class="tablewrap"><table class="values"><thead><tr><th>Zwischenschritt</th><th>Wert</th><th>Kontrolle</th></tr></thead><tbody>
+ <tr><td>Gesamtwert</td><td>${inputHTML("total",q.totalUnit)}</td><td>${checkHTML("total")}</td></tr></tbody></table></div>`;
+ $("answerArea").appendChild(box);addHelp(box,q.help);
+ wireCell(box,"total",q.totalAnswer,()=>{q.inputRows.forEach((r,i)=>{box.querySelector(`[data-key="r${i}"]`).disabled=false;box.querySelector(`[data-check="r${i}"]`).disabled=false})},"Gesamtwert stimmt. Jetzt die Tabelle ausfüllen.");
+ q.inputRows.forEach((r,i)=>wireCell(box,"r"+i,r.answer,()=>{if(q.inputRows.every((_,j)=>box.querySelector(`[data-key="r${j}"]`).disabled))finishQuestion()},`${r.left}: richtig.`))
 }
+
 function renderTableSteps(){
- $("question").textContent="Fülle die Tabelle Schritt für Schritt aus. Jedes Feld kann einzeln geprüft und korrigiert werden.";
- let h=`<table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>`;
- let inputs=[];
+ $("question").textContent="Fülle alle fehlenden Werte direkt in der Tabelle aus. Jedes Feld kann einzeln geprüft werden.";
+ const box=document.createElement("div");
+ let rows="",fields=[];
  q.rows.forEach((r,ri)=>{
-   const left=r.left!==undefined?r.left:(r.leftInput!==undefined?`<input class="cellinput" data-k="L${ri}" inputmode="decimal"> ${r.leftUnit||""}`:"");
-   const right=r.right!==undefined?r.right:(r.rightInput!==undefined?`<input class="cellinput" data-k="R${ri}" inputmode="decimal"> ${r.rightUnit||""}`:"");
+   const left=r.left!==undefined?r.left:(r.leftInput!==undefined?inputHTML(`L${ri}`,r.leftUnit):"");
+   const right=r.right!==undefined?r.right:(r.rightInput!==undefined?inputHTML(`R${ri}`,r.rightUnit):"");
    let controls=[];
-   if(r.leftInput!==undefined){inputs.push({key:`L${ri}`,answer:r.leftInput});controls.push(`<button class="smallcheck" data-c="L${ri}">links prüfen</button>`)}
-   if(r.rightInput!==undefined){inputs.push({key:`R${ri}`,answer:r.rightInput});controls.push(`<button class="smallcheck" data-c="R${ri}">rechts prüfen</button>`)}
-   h+=`<tr><td>${left}</td><td>${right}</td><td>${controls.length?controls.join(" "):"gegeben"}</td></tr>`
+   if(r.leftInput!==undefined){fields.push({key:`L${ri}`,answer:r.leftInput});controls.push(checkHTML(`L${ri}`,"links prüfen"))}
+   if(r.rightInput!==undefined){fields.push({key:`R${ri}`,answer:r.rightInput});controls.push(checkHTML(`R${ri}`,"rechts prüfen"))}
+   rows+=`<tr><td>${left}</td><td>${right}</td><td>${controls.length?controls.join(" "):"gegeben"}</td></tr>`
  });
- h+="</tbody></table>";
- const box=document.createElement("div");box.className="panel";box.innerHTML=h;$("answerArea").appendChild(box);
- let finalDone=q.finalAnswer===undefined;
- if(q.finalAnswer!==undefined){
-   const f=document.createElement("div");f.className="step";f.innerHTML=`<div class="row"><b>${q.finalLabel}</b><input class="num final" inputmode="decimal"><span>${q.finalUnit||""}</span><button class="btn primary checkFinal">Prüfen</button></div>`;box.appendChild(f);
-   f.querySelector(".checkFinal").onclick=()=>{if(close(parseNum(f.querySelector(".final").value),q.finalAnswer)){f.querySelector(".final").disabled=true;f.querySelector(".checkFinal").disabled=true;finalDone=true;good();$("feedback").className="feedback good";$("feedback").textContent="Endwert stimmt.";maybeFinish()}else retry("Noch nicht. Korrigiere den Endwert.")}
- }
- addHelp(box,q.help);
- function maybeFinish(){if(inputs.every(x=>box.querySelector(`[data-k="${x.key}"]`).disabled)&&finalDone){success("Alles richtig.");finishQuestion()}}
- inputs.forEach(item=>{const inp=box.querySelector(`[data-k="${item.key}"]`),btn=box.querySelector(`[data-c="${item.key}"]`);btn.onclick=()=>{if(close(parseNum(inp.value),item.answer)){inp.classList.remove("cellbad");inp.classList.add("cellgood");inp.disabled=true;btn.disabled=true;good();$("feedback").className="feedback good";$("feedback").textContent="Richtig.";maybeFinish()}else{inp.classList.add("cellbad");retry("Noch nicht. Korrigiere dieses Tabellenfeld.")}};inp.addEventListener("input",()=>inp.classList.remove("cellbad"))})
+ let extra="";
+ if(q.finalAnswer!==undefined){fields.push({key:"final",answer:q.finalAnswer});extra=`<div class="tablewrap"><table class="values"><thead><tr><th>Ergebnis</th><th>Wert</th><th>Kontrolle</th></tr></thead><tbody><tr><td>${q.finalLabel}</td><td>${inputHTML("final",q.finalUnit)}</td><td>${checkHTML("final")}</td></tr></tbody></table></div>`}
+ box.innerHTML=`<div class="tablewrap"><table class="values"><thead><tr><th>${q.headers[0]}</th><th>${q.headers[1]}</th><th>Kontrolle</th></tr></thead><tbody>${rows}</tbody></table></div>${extra}`;
+ $("answerArea").appendChild(box);addHelp(box,q.help);
+ fields.forEach(f=>wireCell(box,f.key,f.answer,()=>{if(fields.every(x=>box.querySelector(`[data-key="${x.key}"]`).disabled))finishQuestion()},"Richtig."))
 }
+
 function renderSteps(){
- $("question").textContent="Arbeite Schritt für Schritt. Ein falscher Wert kann korrigiert und erneut geprüft werden.";
- const box=document.createElement("div");box.className="panel";$("answerArea").appendChild(box);
- q.steps.forEach((s,i)=>{const d=document.createElement("div");d.className="step"+(i?" hidden":"");d.dataset.step=i;d.innerHTML=`<h4>Schritt ${i+1}</h4><div class="row"><b>${s.label}</b><input class="num" inputmode="decimal"><span>${s.unit}</span><button class="btn ${i===q.steps.length-1?"primary":"softbtn"}">Prüfen</button></div>`;box.appendChild(d);const inp=d.querySelector("input"),btn=d.querySelector("button");btn.onclick=()=>{if(close(parseNum(inp.value),s.answer)){inp.disabled=true;btn.disabled=true;good();$("feedback").className="feedback good";$("feedback").textContent=`${s.label}: richtig.`;const next=box.querySelector(`[data-step="${i+1}"]`);if(next)next.classList.remove("hidden");else{success("Richtig.");finishQuestion()}}else retry(`${s.label}: Noch nicht. Korrigiere den Wert.`)}});addHelp(box,q.help)
+ $("question").textContent="Arbeite Schritt für Schritt. Jeder Rechenschritt steht in einer Tabelle und kann einzeln geprüft werden.";
+ const box=document.createElement("div");
+ const rows=q.steps.map((s,i)=>`<tr><td>${s.label}</td><td>${inputHTML("s"+i,s.unit,i>0)}</td><td>${checkHTML("s"+i,"Prüfen",i>0)}</td></tr>`).join("");
+ box.innerHTML=`<div class="tablewrap"><table class="values"><thead><tr><th>Rechenschritt</th><th>Wert</th><th>Kontrolle</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+ $("answerArea").appendChild(box);addHelp(box,q.help);
+ q.steps.forEach((s,i)=>wireCell(box,"s"+i,s.answer,()=>{if(i+1<q.steps.length){box.querySelector(`[data-key="s${i+1}"]`).disabled=false;box.querySelector(`[data-check="s${i+1}"]`).disabled=false}else finishQuestion()},`${s.label}: richtig.`))
 }
 
 $("nextBtn").onclick=()=>{idx++;if(idx>=items.length)showResults();else render()};
@@ -133,5 +162,4 @@ function showResults(){
 }
 $("restartBtn").onclick=()=>startTest();
 $("repeatBtn").onclick=()=>{const ids=new Set(mistakes.map(m=>m.id));startTest(TESTS[testIndex].questions.filter(x=>ids.has(x.id)))};
-
 buildHome();showHome();
