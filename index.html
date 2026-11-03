@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proportionalität – Finaler Lerntrainer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap"><div class="card">
+<div class="top">
+ <div><h1>Proportionalität – Lerntrainer</h1><div class="sub">10 Tests · je 10 Aufgaben · von sehr leicht bis prüfungsnah</div></div>
+ <button id="soundBtn" class="btn ghost">🔊 Ton an</button>
+</div>
+
+<section id="home"><div id="testGrid" class="testgrid"></div></section>
+
+<section id="intro" class="hidden">
+ <div class="top"><div><h2 id="introTitle"></h2><span id="introLevel" class="badge"></span></div><button id="introHome" class="btn ghost">Zur Übersicht</button></div>
+ <div class="intro"><p id="introText"></p><div class="actions"><button id="startBtn" class="btn primary">Test starten</button></div></div>
+</section>
+
+<section id="quiz" class="hidden">
+ <div class="top"><div><h2 id="qTitle"></h2><div id="counter" class="sub"></div></div><button id="quizHome" class="btn ghost">Zur Übersicht</button></div>
+ <div class="progress"><div id="bar" class="bar"></div></div>
+ <div class="problemcard">
+  <div id="context" class="context hidden"></div>
+  <div id="tableArea" class="tablewrap hidden"></div>
+  <div id="question" class="question"></div>
+  <div id="answerArea"></div>
+  <div id="feedback" class="feedback hidden"></div>
+ </div>
+ <div class="actions"><button id="nextBtn" class="btn dark hidden">Weiter</button></div>
+</section>
+
+<section id="results" class="hidden">
+ <div class="top"><h2>Fertig!</h2><button id="resultsHome" class="btn ghost">Zur Übersicht</button></div>
+ <div class="summary"><div class="stat"><b id="pct">0%</b><span>ohne Fehler</span></div><div class="stat"><b id="score">0/10</b><span>beim ersten Versuch</span></div><div class="stat"><b id="errs">0</b><span>Aufgaben mit Fehlern</span></div></div>
+ <div id="mistakeBox" class="mistakes"></div>
+ <div class="actions"><button id="repeatBtn" class="btn primary">Nur Fehler wiederholen</button><button id="restartBtn" class="btn dark">Diesen Test neu starten</button></div>
+</section>
+</div></div>
+
+<script src="app.js"></script>
+</body>
+</html>
