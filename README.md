@@ -1,8 +1,7 @@
 # Proportionalität – Lerntrainer
 
-Static GitHub Pages app.
+Corrected GitHub Pages build.
 
-Upload `index.html`, `styles.css`, `app.js`, and `.nojekyll` to the repository root.
-Then enable **Settings → Pages → Deploy from a branch → main → /(root)**.
+Upload `index.html`, `styles.css`, `app.js`, and `.nojekyll` to the repository root. Then enable GitHub Pages from the `main` branch and root folder.
 
-All missing values are entered directly in tables and can be checked individually.
+Features include visible tables in Test 3, individual table-cell checking, end-of-test percentage, retrying incorrect questions, and locally saved last/best scores.
